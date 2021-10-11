@@ -1,5 +1,4 @@
-# is this how it's written?
-__pycache__/
+__pycache__
 
 credentials.py
 

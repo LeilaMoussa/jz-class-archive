@@ -1,31 +1,32 @@
 from credentials import USERNAME, PASSWORD  # personal portal credentials
-#import constants  # named constants
+from constants import PROF, OP_FILE, SITE_URL, WEBDRIVER_PATH, FIRST_RECORDED_SEMESTER
 from selenium import webdriver
 from selenium.webdriver.support.ui import Select
 from datetime import datetime
 
-WEBDRIVER_PATH = '../../Downloads/chromedriver.exe'
-SITE_URL = 'https://my.aui.ma/ics'
+def format_semester_name(current_semester: tuple) -> str:
+	(semester, year1, year2) = current_semester
+	if year1 >= 2014:
+		return f'{year1}-{year2} Academic Year - {semester}'
+	else:
+		return f'{year1}-{year2} {semester}'
 
-PROF = 'NISAR SHEIKH, Naeem'  # as written in dropdown menu
-SEMESTERS = 2  # Number of semester I'm looking back, but most likely I'll have to go all the way back and ditch this.
-OP_FILE = 'summary.xlsx'  # file format: as many sheets as semesters, on each sheet: row is class: roster (or something else)
-
+# Actually, i need to hang on to both the tuple and the string.
 def get_current_semester() -> tuple:
 	# Start semester I'm "counting down" from.
 	now = datetime.now()
 	year = now.year
 	month = now.month
 	if 9 <= month <= 12:
-		semester = 'Fall'
+		semester = 'Fall Semester'  # should make these named constants
 		year1 = year
 		year2 = year + 1
 	elif 1 <= month <= 5:
-		semester = 'Spring'
+		semester = 'Spring Semester'
 		year1 = year - 1  # double check this, i might be tweaking
 		year2 = year
 	else:
-		semester = 'Summer'
+		semester = 'Summer Session'
 		year1 = year - 1
 		year2 = year
 	# Intersessions?
@@ -33,16 +34,16 @@ def get_current_semester() -> tuple:
 
 def get_previous_semester(current_semester: tuple) -> tuple:
 	(semester, year1, year2) = current_semester
-	if semester == 'Fall':
-		prev_semester = 'Summer'
+	if semester == 'Fall Semester':
+		prev_semester = 'Summer Session'
 		prev_year1 = year1 - 1
 		prev_year2 = year1
-	elif semester == 'Spring':
-		prev_semester = 'Fall'
+	elif semester == 'Spring Semester':
+		prev_semester = 'Fall Semester'
 		prev_year1 = year1
 		prev_year2 = year1 + 1
-	elif semester == 'Summer':
-		prev_semester = 'Spring'
+	elif semester == 'Summer Session':
+		prev_semester = 'Spring Semester'
 		prev_year1, prev_year2 = year1, year2
 	return (prev_semester, prev_year1, prev_year2)
 
@@ -50,19 +51,17 @@ def login():
 	driver.find_element_by_id('userName').send_keys(USERNAME)
 	driver.find_element_by_id('password').send_keys(PASSWORD)
 	driver.find_element_by_id('siteNavBar_btnLogin').click()
-	# No, I will not handle edge cases or errors.
 
 def navigate_to_search():
 	driver.find_element_by_link_text('Students').click()
 	driver.find_element_by_id('pg1_V_lblAdvancedSearch').click()
 	driver.implicitly_wait(2)
-	# select faculty in the same way
 
 def launch_search(semester_name: str):
-	menu = Select(driver.find_element_by_id('pg0_V_ddlTerm'))
-	menu.select_by_visible_text('2008-2009 Spring Semester')  # need to construct this string, the problem is that they're not all uniform
-	menu = Select(driver.find_element_by_id('pg0_V_ddlFaculty'))
-	menu.select_by_visible_text(PROF)
+	semester_menu = Select(driver.find_element_by_id('pg0_V_ddlTerm'))
+	semester_menu.select_by_visible_text(semester_name)
+	faculty_menu = Select(driver.find_element_by_id('pg0_V_ddlFaculty'))
+	faculty_menu.select_by_visible_text(PROF)
 	driver.find_element_by_id('pg0_V_btnSearch').click()
 
 def scrape_classes() -> list:
@@ -74,12 +73,16 @@ def scrape_classes() -> list:
 			semester_classes.append(driver.find_element_by_id(f'pg0$V$dgCourses$sec2$row{i}$lnkCourse').text)
 			i += 2
 		except:
+			print("oopsie!")
 			return semester_classes
 
 def return_to_search():
 	driver.find_element_by_link_text('Search Again').click()
+	driver.implicitly_wait(2)
 
 def write_to_output_file(semester: str, classes: list):
+	print("pretend i'm writing")
+	return
 	with open(OP_FILE) as op:
 		pass
 		# create a new sheet named semester and populate first column with classes
@@ -87,21 +90,22 @@ def write_to_output_file(semester: str, classes: list):
 def main():
 	login()
 	navigate_to_search()
-	semester = get_current_semester()
+	current_semester = get_current_semester()
+	semester_name = format_semester_name(current_semester)
 	classes = []
-	for i in range(SEMESTERS):  # again, might make this a while
-		launch_search(semester)
+	while semester_name != FIRST_RECORDED_SEMESTER:
+		launch_search(semester_name)
 		semester_classes = scrape_classes()
 		#print("semester classes", semester_classes)
 		classes.append(semester_classes)  # think reference thingy
 		return_to_search()
-		semester = get_previous_semester(current_semester)
+		current_semester = get_previous_semester(current_semester)
+		semester_name = format_semester_name(current_semester)
+	#print("in the end, classes are", classes)
 	write_to_output_file(semester_name, classes)
-	# not thinking about roster yet
 
 if __name__ == '__main__':
 	global driver
-	set_current_semester()
 	driver = webdriver.Chrome(WEBDRIVER_PATH) # should i make the browser configurable?
 	driver.get(SITE_URL)
 	main()
