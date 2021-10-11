@@ -1,6 +1,7 @@
 # jz-class-archive
 
 This small scraping script tries to get a list of all course sections taught by a specific professor over the years, using a simple course search on Jenzabar.
+
 ------------------------------
 ### TODOs
 - [ ] Resolve faculty selection error on search relaunch
