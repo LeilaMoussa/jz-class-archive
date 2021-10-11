@@ -10,3 +10,4 @@ This small scraping script tries to get a list of all course sections taught by 
 - [ ] Write to file
 - [ ] Configure constants: Faculty name, output file path, etc.
 - [ ] Find a way to get browser driver based on desired browser and version (can I curl?)
+- [ ] Refactoring: use more named constants + clean up code + nicer comments
